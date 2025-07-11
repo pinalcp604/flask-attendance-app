@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .verylow {
+            background-color: #f8d7da;
+        }
+
+        /* Red */
+        .low {
+            background-color: #fff3cd;
+        }
+
+        /* Yellow */
+        .medium {
+            background-color: #d1ecf1;
+        }
+
+        /* Light Blue */
+        .high {
+            background-color: #d4edda;
+        }
+
+        /* Green */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2 style="color: #FF0000;text-align:center;">Welcome, {{ student['First Name'] }} {{ student['Surname'] }}</h2>
+        <p style="color: #0800ff;text-align:center;"><strong>Student ID:</strong> {{ student['Student ID'] }}</p>
+
+        <h3>Term Summary</h3>
+        <table>
+            <tr>
+                <th>Term</th>
+                <th>Total Attendance (%)</th>
+            </tr>
+            {% for row in summary %}
+            {% set category = 'high' %}
+            {% if row.average < 50 %} {% set category='verylow' %} {% elif row.average < 70 %} {% set category='low' %}
+                {% elif row.average < 90 %} {% set category='medium' %} {% endif %} <tr class="{{ category }}">
+                <td>{{ row.term }}</td>
+                <td>{{ row.average }}%</td>
+                </tr>
+                {% endfor %}
+        </table>
+
+        <button onclick="downloadCSV()">Download Full Report</button>
+        <hr width="100%;" color="black" size="5">
+
+        <h3>Attendance Comparison Across Terms</h3>
+        <canvas id="termChart" width="400" height="200"></canvas>
+        <hr width="100%;" color="black" size="5">
+
+        <h3>Select Term to View Weekly Breakdown</h3>
+        <form method="POST" action="/term">
+
+            <input type="hidden" name="student_id" value="{{ student['Student ID'] }}">
+            <label for="term">Select Term:</label>
+            <select name="term" onchange="this.form.submit()">
+                {% for t in terms %}
+                <option value="{{ t }}" {% if t==selected_term %}selected{% endif %}>{{ t.replace("_", " ") }}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <h3>Weekly Breakdown – {{ term }}</h3>
+        <ul>
+            {% for week in weeks %}
+            {% set percent = (student[week] * 100) %}
+            <li
+                class="{% if percent < 50 %}verylow{% elif percent < 70 %}low{% elif percent < 90 %}medium{% else %}high{% endif %}">
+                {{ week }}: {{ percent | round(2) }}%
+            </li>
+            {% endfor %}
+        </ul>
+
+        <hr width="100%;" color="black" size="5">
+        <h3>Attendance Chart</h3>
+        <canvas id="attendanceChart" width="400" height="200"></canvas>
+
+        <a href="/">Log out</a>
+    </div>
+
+    <script>
+        // Weekly attendance chart
+        const weeklyCtx = document.getElementById('attendanceChart').getContext('2d');
+        new Chart(weeklyCtx, {
+            type: 'line',
+            data: {
+                labels: {{ weeks | tojson }},
+            datasets: [{
+                label: 'Weekly Attendance (%)',
+                data: [
+                    {% for week in weeks %}
+                            {{ (student[week] * 100) | round(2) }},
+            {% endfor %}
+        ],
+            backgroundColor: 'rgba(39, 174, 96, 0.2)',
+            borderColor: 'rgba(39, 174, 96, 1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 5,
+            pointHoverRadius: 7
+                }]
+            },
+            options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 110,
+                    title: {
+                        display: true,
+                        text: 'Attendance (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Week'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.parsed.y + '%';
+                        }
+                    }
+                }
+            }
+        }
+        });
+
+        // Term comparison bar chart
+        const termCtx = document.getElementById('termChart').getContext('2d');
+        new Chart(termCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ summary | map(attribute = 'term') | list | tojson }},
+            datasets: [{
+                label: 'Total Attendance (%)',
+                data: {{ summary | map(attribute = 'average') | list | tojson }},
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            borderColor: '#2c3e50',
+            borderWidth: 1
+                }]
+            },
+            options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 110,
+                    title: {
+                        display: true,
+                        text: 'Attendance (%)'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+        });
+
+        // CSV export
+        function downloadCSV() {
+            let csv = "Term,Total Attendance (%)\n";
+            {% for row in summary %}
+            csv += `"{{ row.term }}",{{ row.average }}\n`;
+            {% endfor %}
+            const blob = new Blob([csv], { type: "text/csv" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "attendance_summary.csv";
+            link.click();
+        }
+    </script>
+</body>
+
+</html>
