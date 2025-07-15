@@ -1,56 +1,91 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-        th, td {
+
+        th,
+        td {
             padding: 8px 12px;
             border: 1px solid #ccc;
+            text-align: center;
         }
-        input, select, button {
+
+        input[type="text"],
+        select,
+        button {
             padding: 8px;
             margin: 10px 5px 10px 0;
-            width: 100%;
             max-width: 300px;
         }
-        .verylow { background-color: #f8d7da; }
-        .low     { background-color: #fff3cd; }
-        .medium  { background-color: #d1ecf1; }
-        .high    { background-color: #d4edda; }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .verylow {
+            background-color: #f8d7da;
+        }
+
+        .low {
+            background-color: #fff3cd;
+        }
+
+        .medium {
+            background-color: #d1ecf1;
+        }
+
+        .high {
+            background-color: #d4edda;
+        }
+
         .summary {
             margin-top: 10px;
             font-weight: bold;
         }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 14px;
+            color: #555;
+        }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <h1 style="color: #FF0000;text-align:center;"><u>Admin Dashboard</u></h1>
 
-        <!-- 🔍 Search Student Summary -->
-        <h3 style="color: #FF0000;">Generate Attendance Report!</h3>
-        <form method="POST">
-            <input type="text" name="student_id" placeholder="Enter Student ID" required>
-            <button type="submit">Get Summary</button>
-        </form>
-        <hr width="100%;" color="black" size="5">
+    <h2>Admin Dashboard</h2>
 
-        <h3 style="color: #FF0000;">Generate Quarterly Attendance Report!</h3>
-        <!-- 📊 Student Attendance Summary -->
-        {% if student_summary %}
-        <h3>Term Summary for Student ID {{ student_id }}{% if student_name %} – {{ student_name }}{% endif %}</h3>
-        <button onclick="downloadStudentSummary()">Download Summary</button>
+    <!-- 🔍 Student Summary Search -->
+    <h3>Search Student Summary</h3>
+    <form method="POST">
+        <input type="text" name="student_id" placeholder="Enter Student ID" required>
+        <button type="submit">Get Summary</button>
+    </form>
+
+    {% if student_summary %}
+    <h3>Term Summary for Student ID {{ student_id }}{% if student_name %} – {{ student_name }}{% endif %}</h3>
+
+    <form method="POST" action="{{ url_for('download_word_selected') }}">
+        <input type="hidden" name="student_id" value="{{ student_id }}">
 
         <table id="studentSummaryTable">
             <thead>
                 <tr>
+                    <th>Select</th>
                     <th>Term</th>
                     {% for week in student_summary[0].weeks.keys() %}
                     <th>{{ week }}</th>
@@ -61,76 +96,78 @@
             <tbody>
                 {% for row in student_summary %}
                 {% set category = 'high' %}
-                {% if row.average < 50 %}
-                    {% set category = 'verylow' %}
-                {% elif row.average < 70 %}
-                    {% set category = 'low' %}
-                {% elif row.average < 90 %}
-                    {% set category = 'medium' %}
-                {% endif %}
-                <tr class="{{ category }}">
+                {% if row.average < 50 %}{% set category='verylow' %} {% elif row.average < 70 %}{% set category='low'
+                    %} {% elif row.average < 90 %}{% set category='medium' %}{% endif %} <tr class="{{ category }}">
+                    <td><input type="checkbox" name="selected_terms" value="{{ row.term }}" unchecked></td>
                     <td>{{ row.term }}</td>
                     {% for value in row.weeks.values() %}
                     <td>{{ value }}%</td>
                     {% endfor %}
                     <td><strong>{{ row.average }}%</strong></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
-
-        <!-- 🗂️ Term Selection -->
-        <form method="POST">
-            <label for="term">Select Term:</label>
-            <select name="term" onchange="this.form.submit()">
-                {% for term in terms %}
-                <option value="{{ term }}" {% if term.replace('_', ' ') == selected_term %}selected{% endif %}>
-                    {{ term.replace('_', ' ') }}
-                </option>
-                {% endfor %}
-            </select>
-        </form>
-
-        <!-- 👥 Student List -->
-        <h3>Attendance Summary – {{ selected_term }}</h3>
-        <input type="text" id="searchInput" placeholder="Search by name or ID...">
-        <select id="attendanceFilter">
-            <option value="all">All Attendance Levels</option>
-            <option value="verylow">Below 50%</option>
-            <option value="low">50% - 70%</option>
-            <option value="medium">70% - 90%</option>
-            <option value="high">Above 90%</option>
-        </select>
-        <button onclick="downloadCSV()">Download Filtered List</button>
-
-        <div class="summary" id="summaryCounts"></div>
-
-        <table id="studentsTable">
-            <thead>
-                <tr>
-                    <th>Student ID</th>
-                    <th>Name</th>
-                    <th>Attendance (%)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for student in students %}
-                <tr>
-                    <td>{{ student['Student ID'] }}</td>
-                    <td>{{ student['First Name'] }} {{ student['Surname'] }}</td>
-                    <td>{{ student['Capped Average (%)'] }}</td>
-                </tr>
-                {% endfor %}
+                    </tr>
+                    {% endfor %}
             </tbody>
         </table>
 
         <br>
-        <a href="{{ url_for('admin_logout') }}">Log out</a>
-    </div>
+        <button type="submit">📄 Generate Attendance Letter</button>
+        <button type="button" onclick="downloadStudentSummary()">📥 Download Summary (CSV)</button>
+    </form>
+    {% endif %}
+
+    <!-- 📂 Term Selection -->
+    <form method="POST">
+        <label for="term">Select Term:</label>
+        <select name="term" onchange="this.form.submit()">
+            {% for term in terms %}
+            <option value="{{ term }}" {% if term.replace('_', ' ' )==selected_term %}selected{% endif %}>
+                {{ term.replace('_', ' ') }}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <!-- 👥 Student List -->
+    <h3>Attendance Summary – {{ selected_term }}</h3>
+    <input type="text" id="searchInput" placeholder="Search by name or ID...">
+    <select id="attendanceFilter">
+        <option value="all">All Attendance Levels</option>
+        <option value="verylow">Below 50%</option>
+        <option value="low">50% - 70%</option>
+        <option value="medium">70% - 90%</option>
+        <option value="high">Above 90%</option>
+    </select>
+    <button onclick="downloadCSV()">Download Filtered List (CSV)</button>
+
+    <div class="summary" id="summaryCounts"></div>
+
+    <table id="studentsTable">
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Attendance (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>{{ student['Student ID'] }}</td>
+                <td>{{ student['First Name'] }} {{ student['Surname'] }}</td>
+                <td>{{ student['Capped Average (%)'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+    <a href="{{ url_for('admin_logout') }}">Log out</a>
+
+    <footer>
+        Developed by <strong>Pinal Shah</strong>
+    </footer>
 
     <script>
-        // 🧠 Table filtering
         const searchInput = document.getElementById('searchInput');
         const attendanceFilter = document.getElementById('attendanceFilter');
         const table = document.getElementById('studentsTable');
@@ -166,19 +203,14 @@
             }
 
             summary.innerHTML = `
-                Showing: 
-                <span style="color:#721c24">Below 50%: ${counts.verylow}</span> | 
-                <span style="color:#856404">50–70%: ${counts.low}</span> | 
-                <span style="color:#0c5460">70–90%: ${counts.medium}</span> | 
+                Showing:
+                <span style="color:#721c24">Below 50%: ${counts.verylow}</span> |
+                <span style="color:#856404">50–70%: ${counts.low}</span> |
+                <span style="color:#0c5460">70–90%: ${counts.medium}</span> |
                 <span style="color:#155724">Above 90%: ${counts.high}</span>
             `;
         }
 
-        searchInput.addEventListener('input', filterTable);
-        attendanceFilter.addEventListener('change', filterTable);
-        window.onload = filterTable;
-
-        // 📥 Download filtered student list
         function downloadCSV() {
             let csv = "Student ID,Name,Attendance (%)\n";
             for (let row of rows) {
@@ -196,7 +228,6 @@
             link.click();
         }
 
-        // 📥 Download student summary
         function downloadStudentSummary() {
             const table = document.getElementById('studentSummaryTable');
             if (!table) return;
@@ -215,6 +246,12 @@
             link.download = "student_attendance_summary.csv";
             link.click();
         }
+
+        searchInput.addEventListener('input', filterTable);
+        attendanceFilter.addEventListener('change', filterTable);
+        window.onload = filterTable;
     </script>
+
 </body>
+
 </html>
