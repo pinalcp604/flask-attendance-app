@@ -1,84 +1,60 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-        }
-
+        body { font-family: Arial, sans-serif; margin: 30px; }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-
-        th,
-        td {
+        th, td {
             padding: 8px 12px;
             border: 1px solid #ccc;
             text-align: center;
         }
-
-        input[type="text"],
-        select,
-        button {
+        input[type="text"], select, button {
             padding: 8px;
             margin: 10px 5px 10px 0;
-            max-width: 300px;
         }
-
         input[type="checkbox"] {
             transform: scale(1.2);
         }
-
-        .verylow {
-            background-color: #f8d7da;
-        }
-
-        .low {
-            background-color: #fff3cd;
-        }
-
-        .medium {
-            background-color: #d1ecf1;
-        }
-
-        .high {
-            background-color: #d4edda;
-        }
-
-        .summary {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            font-size: 14px;
-            color: #555;
-        }
+        .verylow { background-color: #f8d7da; }
+        .low     { background-color: #fff3cd; }
+        .medium  { background-color: #d1ecf1; }
+        .high    { background-color: #d4edda; }
+        .summary { margin-top: 10px; font-weight: bold; }
+        footer { text-align: center; margin-top: 40px; font-size: 14px; color: #555; }
     </style>
 </head>
-
 <body>
 
     <h2>Admin Dashboard</h2>
 
     <!-- 🔍 Student Summary Search -->
-    <h3>Search Student Summary</h3>
     <form method="POST">
         <input type="text" name="student_id" placeholder="Enter Student ID" required>
         <button type="submit">Get Summary</button>
     </form>
 
+    
+
     {% if student_summary %}
     <h3>Term Summary for Student ID {{ student_id }}{% if student_name %} – {{ student_name }}{% endif %}</h3>
 
+    <a href="{{ url_for('generate_warning_letter', email_type='warning1', student_id=student_id) }}">
+            <button>Generate Warning Letter 1</button>
+        </a>
+
+        <a href="{{ url_for('generate_warning_letter', email_type='warning2', student_id=student_id) }}">
+            <button>Generate Warning Letter 2</button>
+        </a>
+
+    <!-- Warning Emails -->
+    
+    <!-- Word Export with Checkboxes -->
     <form method="POST" action="{{ url_for('download_word_selected') }}">
         <input type="hidden" name="student_id" value="{{ student_id }}">
 
@@ -96,49 +72,56 @@
             <tbody>
                 {% for row in student_summary %}
                 {% set category = 'high' %}
-                {% if row.average < 50 %}{% set category='verylow' %} {% elif row.average < 70 %}{% set category='low'
-                    %} {% elif row.average < 90 %}{% set category='medium' %}{% endif %} <tr class="{{ category }}">
+                {% if row.average < 50 %}
+                    {% set category = 'verylow' %}
+                {% elif row.average < 70 %}
+                    {% set category = 'low' %}
+                {% elif row.average < 90 %}
+                    {% set category = 'medium' %}
+                {% endif %}
+                <tr class="{{ category }}">
                     <td><input type="checkbox" name="selected_terms" value="{{ row.term }}" unchecked></td>
                     <td>{{ row.term }}</td>
                     {% for value in row.weeks.values() %}
                     <td>{{ value }}%</td>
                     {% endfor %}
                     <td><strong>{{ row.average }}%</strong></td>
-                    </tr>
-                    {% endfor %}
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
 
         <br>
-        <button type="submit">📄 Generate Attendance Letter</button>
+        <button type="submit">Generate Attendance Letter</button>
         <button type="button" onclick="downloadStudentSummary()">📥 Download Summary (CSV)</button>
+        
+
     </form>
     {% endif %}
 
-    <!-- 📂 Term Selection -->
+    <!-- 📂 Term Selector -->
     <form method="POST">
         <label for="term">Select Term:</label>
         <select name="term" onchange="this.form.submit()">
             {% for term in terms %}
-            <option value="{{ term }}" {% if term.replace('_', ' ' )==selected_term %}selected{% endif %}>
+            <option value="{{ term }}" {% if term.replace('_', ' ') == selected_term %}selected{% endif %}>
                 {{ term.replace('_', ' ') }}
             </option>
             {% endfor %}
         </select>
     </form>
 
-    <!-- 👥 Student List -->
-    <h3>Attendance Summary – {{ selected_term }}</h3>
+    <!-- 👥 Student Table -->
+    <h3>Student Attendance – {{ selected_term }}</h3>
     <input type="text" id="searchInput" placeholder="Search by name or ID...">
     <select id="attendanceFilter">
-        <option value="all">All Attendance Levels</option>
+        <option value="all">All</option>
         <option value="verylow">Below 50%</option>
-        <option value="low">50% - 70%</option>
-        <option value="medium">70% - 90%</option>
+        <option value="low">50–70%</option>
+        <option value="medium">70–90%</option>
         <option value="high">Above 90%</option>
     </select>
-    <button onclick="downloadCSV()">Download Filtered List (CSV)</button>
-
+    <button onclick="downloadCSV()">Download CSV</button>
     <div class="summary" id="summaryCounts"></div>
 
     <table id="studentsTable">
@@ -171,36 +154,28 @@
         const searchInput = document.getElementById('searchInput');
         const attendanceFilter = document.getElementById('attendanceFilter');
         const table = document.getElementById('studentsTable');
-        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        const rows = table.querySelector('tbody').rows;
         const summary = document.getElementById('summaryCounts');
 
         function filterTable() {
             const query = searchInput.value.toLowerCase();
             const filter = attendanceFilter.value;
-
             let counts = { verylow: 0, low: 0, medium: 0, high: 0 };
 
-            for (let row of rows) {
+            Array.from(rows).forEach(row => {
                 const id = row.cells[0].textContent.toLowerCase();
                 const name = row.cells[1].textContent.toLowerCase();
                 const attendance = parseFloat(row.cells[2].textContent);
-
-                const matchesSearch = id.includes(query) || name.includes(query);
-
-                let category = '';
-                if (attendance < 50) category = 'verylow';
-                else if (attendance < 70) category = 'low';
-                else if (attendance <= 90) category = 'medium';
-                else category = 'high';
+                let category = attendance < 50 ? "verylow" :
+                               attendance < 70 ? "low" :
+                               attendance <= 90 ? "medium" : "high";
 
                 row.className = category;
-
-                const matchesFilter = (filter === 'all' || filter === category);
-                const visible = matchesSearch && matchesFilter;
-                row.style.display = visible ? '' : 'none';
-
-                if (visible) counts[category]++;
-            }
+                const match = (id.includes(query) || name.includes(query)) &&
+                              (filter === 'all' || filter === category);
+                row.style.display = match ? "" : "none";
+                if (match) counts[category]++;
+            });
 
             summary.innerHTML = `
                 Showing:
@@ -213,14 +188,12 @@
 
         function downloadCSV() {
             let csv = "Student ID,Name,Attendance (%)\n";
-            for (let row of rows) {
-                if (row.style.display !== 'none') {
-                    const cells = row.getElementsByTagName('td');
-                    const line = Array.from(cells).map(cell => `"${cell.textContent}"`).join(",");
-                    csv += line + "\n";
+            Array.from(rows).forEach(row => {
+                if (row.style.display !== "none") {
+                    const cells = row.cells;
+                    csv += `"${cells[0].textContent}","${cells[1].textContent}","${cells[2].textContent}"\n`;
                 }
-            }
-
+            });
             const blob = new Blob([csv], { type: "text/csv" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -231,27 +204,23 @@
         function downloadStudentSummary() {
             const table = document.getElementById('studentSummaryTable');
             if (!table) return;
+            let csv = Array.from(table.rows).map(row =>
+                Array.from(row.cells).map(cell =>
+                    `"${cell.textContent.trim()}"`).join(",")
+            ).join("\n");
 
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-            for (let row of rows) {
-                const cols = row.querySelectorAll('th, td');
-                const line = Array.from(cols).map(col => `"${col.textContent.trim()}"`).join(",");
-                csv.push(line);
-            }
-
-            const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+            const blob = new Blob([csv], { type: "text/csv" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "student_attendance_summary.csv";
+            link.download = "student_summary.csv";
             link.click();
         }
 
-        searchInput.addEventListener('input', filterTable);
-        attendanceFilter.addEventListener('change', filterTable);
+        searchInput.addEventListener("input", filterTable);
+        searchInput.addEventListener("input", filterTable);
+        attendanceFilter.addEventListener("change", filterTable);
         window.onload = filterTable;
     </script>
 
 </body>
-
 </html>
