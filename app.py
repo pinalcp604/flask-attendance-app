@@ -447,7 +447,7 @@ def generate_warning_letter(email_type, student_id):
     if email_type == "warning2":
         doc.add_paragraph("")
         # Greeting line
-        doc.add_paragraph(f"Dear or Kia Ora {student_name}")
+        doc.add_paragraph(f"Kia Ora {student_name}")
 
         # Subject line
         doc.add_paragraph(
