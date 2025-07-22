@@ -410,7 +410,7 @@ def generate_warning_letter(email_type, student_id):
 
     if email_type == "warning1":
         # === Additional Warning Content ===
-
+        doc.add_paragraph("")
         doc.add_paragraph("Re: Attendance [You are an international student currently enrolled in]", style='Normal').runs[0].bold = True
 
         doc.add_paragraph("")
@@ -448,6 +448,7 @@ def generate_warning_letter(email_type, student_id):
         doc.add_paragraph("")
         # Greeting line
         doc.add_paragraph(f"Kia Ora {student_name}")
+        doc.add_paragraph("")
 
         # Subject line
         doc.add_paragraph(
