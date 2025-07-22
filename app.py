@@ -18,6 +18,8 @@ EXCEL_FILE = "Attendance Test.xlsx"
 load_dotenv()
 
 # === Sheet Filtering ===
+
+
 def is_valid_sheet(sheet_name):
     try:
         df = pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
@@ -25,14 +27,21 @@ def is_valid_sheet(sheet_name):
     except:
         return False
 
-sheet_names = [s for s in pd.ExcelFile(EXCEL_FILE).sheet_names if is_valid_sheet(s)]
+
+sheet_names = [s for s in pd.ExcelFile(
+    EXCEL_FILE).sheet_names if is_valid_sheet(s)]
 
 # === Clean IDs ===
+
+
 def sanitize_ids(df):
-    df['Student ID'] = df['Student ID'].apply(lambda x: int(float(x)) if pd.notnull(x) else None)
+    df['Student ID'] = df['Student ID'].apply(
+        lambda x: int(float(x)) if pd.notnull(x) else None)
     return df
 
 # === LOGIN ===
+
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -53,7 +62,8 @@ def login():
                 student_data = df[df['Student ID'] == student_id]
                 if not student_data.empty:
                     record = student_data.to_dict('records')[0]
-                    summary.append({"term": sheet.replace("_", " "), "average": record["Capped Average (%)"]})
+                    summary.append({"term": sheet.replace(
+                        "_", " "), "average": record["Capped Average (%)"]})
                     if not selected_record:
                         selected_record = record
                         selected_term = sheet
@@ -76,6 +86,8 @@ def login():
     return render_template('login.html')
 
 # === CHANGE TERM ===
+
+
 @app.route('/term', methods=['POST'])
 def change_term():
     student_id = int(float(request.form['student_id']))
@@ -94,25 +106,28 @@ def change_term():
         student_data = df[df['Student ID'] == student_id]
         if not student_data.empty:
             record = student_data.to_dict('records')[0]
-            summary.append({"term": sheet.replace("_", " "), "average": record["Capped Average (%)"]})
+            summary.append({"term": sheet.replace("_", " "),
+                           "average": record["Capped Average (%)"]})
             if sheet == selected_term:
                 selected_record = record
                 week_cols = weeks
 
     if selected_record:
         return render_template('dashboard.html',
-            student=selected_record,
-            weeks=week_cols,
-            term=selected_term.replace("_", " "),
-            terms=sheet_names,
-            selected_term=selected_term,
-            summary=summary
-        )
+                               student=selected_record,
+                               weeks=week_cols,
+                               term=selected_term.replace("_", " "),
+                               terms=sheet_names,
+                               selected_term=selected_term,
+                               summary=summary
+                               )
     return render_template('login.html', error="Student ID not found.")
+
 
 # === ADMIN LOGIN ===
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
+
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
@@ -123,12 +138,15 @@ def admin_login():
         return render_template('admin_login.html', error="Invalid credentials")
     return render_template('admin_login.html')
 
+
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin', None)
     return redirect(url_for('admin_login'))
 
 # === ADMIN DASHBOARD ===
+
+
 @app.route('/admin/dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
     if not session.get('admin'):
@@ -144,7 +162,8 @@ def admin_dashboard():
     df[week_cols] = df[week_cols].clip(upper=1.0)
     df["Capped Average (%)"] = df[week_cols].mean(axis=1) * 100
     df["Capped Average (%)"] = df["Capped Average (%)"].round(2)
-    students = df[["Student ID", "First Name", "Surname", "Capped Average (%)"]].to_dict('records')
+    students = df[["Student ID", "First Name", "Surname",
+                   "Capped Average (%)"]].to_dict('records')
 
     if student_id:
         student_id = int(float(student_id))
@@ -153,12 +172,14 @@ def admin_dashboard():
             weeks = [col for col in df_term.columns if col.startswith("Week")]
             df_term[weeks] = df_term[weeks].clip(upper=1.0)
             df_term["Capped Average (%)"] = df_term[weeks].mean(axis=1) * 100
-            df_term["Capped Average (%)"] = df_term["Capped Average (%)"].round(2)
+            df_term["Capped Average (%)"] = df_term["Capped Average (%)"].round(
+                2)
             student_data = df_term[df_term['Student ID'] == student_id]
             if not student_data.empty:
                 record = student_data.to_dict('records')[0]
                 weekly = {week: round(record[week]*100, 2) for week in weeks}
-                student_summary.append({"term": sheet.replace("_", " "), "average": record["Capped Average (%)"], "weeks": weekly})
+                student_summary.append({"term": sheet.replace(
+                    "_", " "), "average": record["Capped Average (%)"], "weeks": weekly})
                 if not student_name:
                     student_name = f"{record['First Name']} {record['Surname']}"
 
@@ -173,6 +194,8 @@ def admin_dashboard():
     )
 
 # === WORD REPORT WITH SELECTED TERMS ===
+
+
 @app.route('/admin/download_word_selected', methods=['POST'])
 def download_word_selected():
     student_id = int(float(request.form['student_id']))
@@ -210,7 +233,16 @@ def download_word_selected():
     try:
         paragraph = doc.add_paragraph()
         run = paragraph.add_run()
-        run.add_picture('logo1.png', width=Inches(6.2))  # Stretch across usable A4 width
+        # run.add_picture('logo1.png', width=Inches(6.2))  # Stretch across usable A4 width
+        import os
+        logo_path = os.path.join(os.path.dirname(
+            __file__), 'static', 'images', 'logo1.PNG')
+
+        if os.path.exists(logo_path):
+            run.add_picture(logo_path, width=Inches(6.2))  # Full width banner
+        else:
+            run.add_text("Whitecliffe")  # Fallback text
+
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     except:
         doc.add_paragraph("Whitecliffe").alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -230,50 +262,49 @@ def download_word_selected():
         bottom.set(qn('w:val'), 'single')
         bottom.set(qn('w:sz'), '6')       # Thickness
         bottom.set(qn('w:space'), '1')    # Spacing
-        bottom.set(qn('w:color'), 'auto') # Color
+        bottom.set(qn('w:color'), 'auto')  # Color
         border.append(bottom)
         p_pr.append(border)
 
     # Call it after header
-    #add_horizontal_line(doc)
+    # add_horizontal_line(doc)
 
-        
-    #right_cell = table.cell(0, 1)
-    #p_info = right_cell.paragraphs[0]
-    #_info.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    #un_info = p_info.add_run("67 Symonds Street\nAuckland 1010\n\n0800 800 300\nwhitecliffe.ac.nz")
-    #run_info.font.size = Pt(11)
-    #run_info.font.color.rgb = RGBColor(80, 80, 80)
+    # right_cell = table.cell(0, 1)
+    # p_info = right_cell.paragraphs[0]
+    # _info.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    # un_info = p_info.add_run("67 Symonds Street\nAuckland 1010\n\n0800 800 300\nwhitecliffe.ac.nz")
+    # run_info.font.size = Pt(11)
+    # run_info.font.color.rgb = RGBColor(80, 80, 80)
 
     doc.add_paragraph(f"Date: {datetime.date.today().strftime('%d %B %Y')}")
    # doc.add_paragraph("")
-    #doc.add_paragraph(f"Student Name: {student_name}")
+    # doc.add_paragraph(f"Student Name: {student_name}")
 
     # Student Name
     p_name = doc.add_paragraph()
     p_name.add_run("Student Name: ").bold = True
     p_name.add_run(student_name)
 
-    #doc.add_paragraph(f"Student ID: {student_id}")
+    # doc.add_paragraph(f"Student ID: {student_id}")
 
     # Student ID
     p_id = doc.add_paragraph()
     p_id.add_run("Student ID: ").bold = True
     p_id.add_run(str(student_id))
 
-    #doc.add_paragraph("NSN Number: [INSERT NSN]")
+    # doc.add_paragraph("NSN Number: [INSERT NSN]")
 
     p_nsn = doc.add_paragraph()
     p_nsn.add_run("NSN Number: ").bold = True
     p_nsn.add_run("[INSERT NSN]")
 
-    
-    doc.add_paragraph("Dear Immigration Officer,\n\nRE: Attendance Summary Letter")
-    doc.add_paragraph("Please be advised that the above student was enrolled in the ______________________________________ at Whitecliffe College of Arts and Design (NZQA Provider Code 8509).")
-    #doc.add_paragraph("Attendance summary records:")
+    doc.add_paragraph(
+        "Dear Immigration Officer,\n\nRE: Attendance Summary Letter")
+    doc.add_paragraph(
+        "Please be advised that the above student was enrolled in the ______________________________________ at Whitecliffe College of Arts and Design (NZQA Provider Code 8509).")
+    # doc.add_paragraph("Attendance summary records:")
     p_summary = doc.add_paragraph()
     p_summary.add_run("Attendance summary records:").bold = True
-
 
     table = doc.add_table(rows=1, cols=11)
     hdr = table.rows[0].cells
@@ -292,14 +323,13 @@ def download_word_selected():
         bottom.set(qn('w:val'), 'single')   # Line style
         bottom.set(qn('w:sz'), '6')         # Thickness
         bottom.set(qn('w:space'), '0')      # Spacing
-        bottom.set(qn('w:color'), '000000') # Black
+        bottom.set(qn('w:color'), '000000')  # Black
         borders.append(bottom)
         tc_pr.append(borders)
 
     # Apply bottom border to each header cell
     for cell in table.rows[0].cells:
         set_bottom_border(cell)
-
 
     for term in student_summary:
         row = table.add_row().cells
@@ -315,8 +345,10 @@ def download_word_selected():
                 for run in paragraph.runs:
                     run.font.size = Pt(9)
 
-    doc.add_paragraph("\nWe have provided this letter to confirm the student's progress and commitment towards studies.")
-    doc.add_paragraph("If you have any concerns relating to the above student, please do not hesitate to contact me.")
+    doc.add_paragraph(
+        "\nWe have provided this letter to confirm the student's progress and commitment towards studies.")
+    doc.add_paragraph(
+        "If you have any concerns relating to the above student, please do not hesitate to contact me.")
 
     doc.add_paragraph(
         "\nYours sincerely,\n\n"
@@ -338,6 +370,7 @@ def download_word_selected():
         mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
 
+
 @app.route('/admin/generate_warning_letter/<email_type>/<int:student_id>')
 def generate_warning_letter(email_type, student_id):
     # Load student data from Excel
@@ -358,8 +391,6 @@ def generate_warning_letter(email_type, student_id):
 
     template_path = f"templates/warning_template_{1 if email_type == 'warning1' else 2}.docx"
     doc = Document(template_path)
-
-    #Test code
 
     doc.add_paragraph(f"Date: {datetime.date.today().strftime('%d %B %Y')}")
    # doc.add_paragraph("")
@@ -446,7 +477,6 @@ def generate_warning_letter(email_type, student_id):
 
 
     
-
 
     buffer = BytesIO()
     doc.save(buffer)
