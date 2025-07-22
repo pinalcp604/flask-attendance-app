@@ -359,22 +359,93 @@ def generate_warning_letter(email_type, student_id):
     template_path = f"templates/warning_template_{1 if email_type == 'warning1' else 2}.docx"
     doc = Document(template_path)
 
-    # Replace placeholders
-    # Replace placeholders in all runs
-    def replace_placeholder(doc, replacements):
-        for para in doc.paragraphs:
-            for run in para.runs:
-                for key, value in replacements.items():
-                        if key in run.text:
-                            run.text = run.text.replace(key, value)
+    #Test code
 
-    # Call it with your values
-    replace_placeholder(doc, {
-        "Student’s Name / Student ID": f"{student_name} / {student_id}",
-        "Dear or Kia Ora [student’s name]": f"Kia Ora {student_name}",
-        "Date": today.strftime("%d %B %Y"),
-        "[Programme Code and Name]": programme
-    })
+    doc.add_paragraph(f"Date: {datetime.date.today().strftime('%d %B %Y')}")
+   # doc.add_paragraph("")
+    #doc.add_paragraph(f"Student Name: {student_name}")
+
+    # Student Name
+    p_name = doc.add_paragraph()
+    p_name.add_run("Student Name: ").bold = True
+    p_name.add_run(student_name)
+
+    #doc.add_paragraph(f"Student ID: {student_id}")
+
+    # Student ID
+    p_id = doc.add_paragraph()
+    p_id.add_run("Student ID: ").bold = True
+    p_id.add_run(str(student_id))
+
+    if email_type == "warning1":
+        # === Additional Warning Content ===
+
+        doc.add_paragraph("Re: Attendance [You are an international student currently enrolled in]", style='Normal').runs[0].bold = True
+
+        doc.add_paragraph("")
+
+        doc.add_paragraph(
+            "You will have had conversations with faculty and/or received texts/emails about your poor attendance.\n"
+            "Our records now show that your attendance at required sessions (face to face or online) has not improved since we contacted you or attempted to contact you five days ago, nor have you provided any explanation for your absence. "
+            "Your success is impacted by attendance, and we would like to work with you to achieve your goals."
+        )
+
+        doc.add_paragraph("")
+        doc.add_paragraph(
+            "An appointment to talk about this has been made with your Programme Leader on:\n"
+            "• (Date/day/time) – please reply (email/text/phone) to confirm if this will be face to face or online."
+        ).runs[0].bold = True
+
+        doc.add_paragraph("")
+        doc.add_paragraph(
+            "When you come, please provide the reason for your absence, along with supporting evidence.\n"
+            "If you fail to attend this appointment or make contact with us, and your attendance to date falls below 90%, you may be withdrawn from your studies at Whitecliffe. "
+            "Your withdrawal from the programme will affect your study visa."
+        )
+        doc.add_paragraph("")
+        doc.add_paragraph(
+            "We look forward to hearing from you as your wellbeing is very important to us, and we want to support you to complete your studies."
+        )
+        doc.add_paragraph("")
+        doc.add_paragraph("Ngā mihi / Yours sincerely")
+
+        doc.add_paragraph("Programme Leader")
+        doc.add_paragraph("cc. Head of School")
+        doc.add_paragraph("cc. Lecturer")
+
+    if email_type == "warning2":
+        doc.add_paragraph("")
+        # Greeting line
+        doc.add_paragraph(f"Dear or Kia Ora {student_name}")
+
+        # Subject line
+        doc.add_paragraph(
+            "Re: Attendance of [Course Code and Name] in the "
+            f"{programme} in which you are enrolled."
+        ).runs[0].bold = True
+
+        doc.add_paragraph("")
+        doc.add_paragraph(
+            "We regret to inform you that your attendance at required sessions (face to face or online) has fallen below 90%. "
+            "Attendance is a condition for maintaining a student visa and Immigration New Zealand needs to be informed of any failure to attend."
+        )
+        doc.add_paragraph("")
+        doc.add_paragraph(
+            "If you do not contact Whitecliffe to discuss and, if possible, resolve your lack of attendance you will be withdrawn from the Programme, Immigration New Zealand will be informed, and you will lose your study visa. "
+            "A decision will be made within the next few days by the Head of School, in consultation with the International team, who will notify you of the outcome."
+        )
+        doc.add_paragraph("")
+        doc.add_paragraph(
+            "You can gain advice from the school, or International staff."
+        )
+        doc.add_paragraph("")
+        # Closing
+        doc.add_paragraph("Ngā mihi / Yours sincerely").runs[0].bold = True
+
+        doc.add_paragraph("Head of School").runs[0].bold = True
+
+
+    
 
 
     buffer = BytesIO()
