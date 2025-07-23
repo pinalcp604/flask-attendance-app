@@ -1,132 +1,287 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Student Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <title>Whitecliffe Student Attendance Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Fonts & Chart.js -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        .verylow {
-            background-color: #f8d7da;
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background: linear-gradient(145deg, #e9eff5, #f9fafc);
+            color: #333;
         }
 
-        /* Red */
-        .low {
-            background-color: #fff3cd;
+        .wrapper {
+            display: flex;
+            min-height: 100vh;
         }
 
-        /* Yellow */
-        .medium {
-            background-color: #d1ecf1;
+        aside {
+            background: linear-gradient(to bottom, #003d7a, #0053A0);
+            color: white;
+            width: 220px;
+            padding: 30px 20px;
         }
 
-        /* Light Blue */
-        .high {
-            background-color: #d4edda;
+        aside h3 {
+            margin-bottom: 30px;
+            font-weight: 600;
         }
 
-        /* Green */
+        aside nav a {
+            display: block;
+            margin: 10px 0;
+            color: white;
+            text-decoration: none;
+            font-size: 15px;
+        }
+
+        .container {
+            flex: 1;
+            padding: 40px 30px;
+            background-color: white;
+            border-radius: 12px;
+            margin: 30px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.03);
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #0053A0;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 40px 0 15px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            background-color: white;
+            box-shadow: 0 0 6px rgba(0,0,0,0.05);
         }
 
-        th,
-        td {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
         }
 
-        button {
+        th {
+            background-color: #eef4fc;
+        }
+
+        tr.verylow td { background-color: #ffe5e5; }
+        tr.low td { background-color: #fff4d2; }
+        tr.medium td { background-color: #dff3ff; }
+        tr.high td { background-color: #e6ffea; }
+
+        select, button {
+            padding: 10px 14px;
             margin-top: 10px;
-            padding: 8px 12px;
+            font-size: 15px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: 140px;
+            background-color: #fff;
+            border-radius: 6px;
+            box-shadow: 0 0 6px rgba(0,0,0,0.05);
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 10px;
+            margin: 6px 0;
+            border-radius: 6px;
+        }
+
+        .btn-download {
+            background-color: #0053A0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+
+        .logout {
+            margin-top: 40px;
+            display: inline-block;
+            font-size: 14px;
+            color: #0053A0;
+            text-decoration: none;
+        }
+
+        @media screen and (max-width: 768px) {
+            .wrapper {
+                flex-direction: column;
+            }
+            aside {
+                width: 100%;
+                text-align: center;
+            }
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
-        <h2 style="color: #FF0000;text-align:center;">Welcome, {{ student['First Name'] }} {{ student['Surname'] }}</h2>
-        <p style="color: #0800ff;text-align:center;"><strong>Student ID:</strong> {{ student['Student ID'] }}</p>
+<div class="wrapper">
+    <aside>
+        <h3>📘 Whitecliffe Portal</h3>
+        <p><strong>{{ student['First Name'] }} {{ student['Surname'] }}</strong></p>
+        <p>ID: {{ student['Student ID'] }}</p>
+        <nav>
+            <a href="#summary">📊 Summary</a>
+            <!--<a href="#charts">📈 Charts</a> -->
+            <a href="#breakdown">📅 Weekly View</a>
+            <a href="/logout">🔓 Logout</a>
+        </nav>
+    </aside>
 
-        <h3>Term Summary</h3>
-        <table>
-            <tr>
-                <th>Term</th>
-                <th>Total Attendance (%)</th>
-            </tr>
-            {% for row in summary %}
-            {% set category = 'high' %}
-            {% if row.average < 50 %} {% set category='verylow' %} {% elif row.average < 70 %} {% set category='low' %}
-                {% elif row.average < 90 %} {% set category='medium' %} {% endif %} <tr class="{{ category }}">
-                <td>{{ row.term }}</td>
-                <td>{{ row.average }}%</td>
-                </tr>
-                {% endfor %}
-        </table>
+    <main class="container">
+        <h2>Welcome, {{ student['First Name'] }}!</h2>
+       <!--  <p><strong>Programme:</strong> {{ student['Programme'] }}</p>-->
 
-        <button onclick="downloadCSV()">Download Full Report</button>
-        <hr width="100%;" color="black" size="5">
+        <section id="summary">
+            <h3>📊 Term Attendance Summary & Comparison</h3>
+            <div style="display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start;">
+                <div style="flex: 1; min-width: 300px;">
+                    <table>
+                        <tr><th>Term</th><th>Total Attendance</th></tr>
+                        {% for row in summary %}
+                        {% set category = 'high' %}
+                        {% if row.average < 50 %} {% set category='verylow' %}
+                        {% elif row.average < 70 %} {% set category='low' %}
+                        {% elif row.average < 90 %} {% set category='medium' %}
+                        {% endif %}
+                        <tr class="{{ category }}">
+                            <td>{{ row.term }}</td>
+                            <td>{{ row.average }}%
+                                {% if row.average < 50 %} ❌ {% elif row.average < 70 %} ⚠️ 
+                                {% elif row.average < 90 %} 🔸 {% else %} ✅ {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    <br>
+                    <button class="btn-download" onclick="downloadCSV()">📥 Download Full Report</button>
+                </div>
 
-        <h3>Attendance Comparison Across Terms</h3>
-        <canvas id="termChart" width="400" height="200"></canvas>
-        <hr width="100%;" color="black" size="5">
+                <div style="flex: 1; min-width: 300px;">
+                    <canvas id="termChart"></canvas>
+                </div>
+            </div>
+        </section>
 
-        <h3>Select Term to View Weekly Breakdown</h3>
-        <form method="POST" action="/term">
+        <section id="breakdown">
+            <h3>📅 Weekly Breakdown – {{ term }}</h3>
+            <form method="POST" action="/term">
+                <label for="term">Select Term:</label>
+                <select name="term" onchange="this.form.submit()">
+                    {% for t in terms %}
+                    <option value="{{ t }}" {% if t==selected_term %}selected{% endif %}>{{ t.replace("_", " ") }}</option>
+                    {% endfor %}
+                </select>
+            </form>
 
-            <input type="hidden" name="student_id" value="{{ student['Student ID'] }}">
-            <label for="term">Select Term:</label>
-            <select name="term" onchange="this.form.submit()">
-                {% for t in terms %}
-                <option value="{{ t }}" {% if t==selected_term %}selected{% endif %}>{{ t.replace("_", " ") }}</option>
-                {% endfor %}
-            </select>
-        </form>
+            <div style="display: flex; gap: 30px; flex-wrap: wrap; margin-top: 20px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <ul>
+                        {% for week in weeks %}
+                        {% set percent = (student[week] * 100) %}
+                        <li class="{% if percent < 50 %}verylow{% elif percent < 70 %}low{% elif percent < 90 %}medium{% else %}high{% endif %}">
+                            <strong>{{ week }}</strong>: {{ percent | round(2) }}%
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </section>
 
-        <h3>Weekly Breakdown – {{ term }}</h3>
-        <ul>
-            {% for week in weeks %}
-            {% set percent = (student[week] * 100) %}
-            <li
-                class="{% if percent < 50 %}verylow{% elif percent < 70 %}low{% elif percent < 90 %}medium{% else %}high{% endif %}">
-                {{ week }}: {{ percent | round(2) }}%
-            </li>
-            {% endfor %}
-        </ul>
+        <a href="/logout" class="logout">🔓 Logout</a>
+    </main>
+</div>
 
-        <hr width="100%;" color="black" size="5">
-        <h3>Attendance Chart</h3>
-        <canvas id="attendanceChart" width="400" height="200"></canvas>
+<!-- Chart.js scripts -->
+<script>
+    const termCtx = document.getElementById('termChart').getContext('2d');
+    new Chart(termCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ summary | map(attribute='term') | list | tojson }},
+            datasets: [{
+                label: 'Total Attendance (%)',
+                data: {{ summary | map(attribute='average') | list | tojson }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: '#2c3e50',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            layout: { padding: { top: 10, bottom: 10 } },
+            scales: {
+                y: { beginAtZero: true, max: 110, title: { display: true, text: 'Attendance (%)' }},
+                x: { ticks: { font: { size: 12 } } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
 
-        <a href="/">Log out</a>
-    </div>
-
-    <script>
-        // Weekly attendance chart
-        const weeklyCtx = document.getElementById('attendanceChart').getContext('2d');
-        new Chart(weeklyCtx, {
-            type: 'line',
-            data: {
-                labels: {{ weeks | tojson }},
+    const weeklyCtx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(weeklyCtx, {
+        type: 'line',
+        data: {
+            labels: {{ weeks | tojson }},
             datasets: [{
                 label: 'Weekly Attendance (%)',
                 data: [
                     {% for week in weeks %}
-                            {{ (student[week] * 100) | round(2) }},
-            {% endfor %}
-        ],
-            backgroundColor: 'rgba(39, 174, 96, 0.2)',
-            borderColor: 'rgba(39, 174, 96, 1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 5,
-            pointHoverRadius: 7
-                }]
+                        {{ (student[week] * 100) | round(2) }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(39, 174, 96, 0.2)',
+                borderColor: 'rgba(39, 174, 96, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            layout: {
+                padding: {
+                    top: 10,
+                    bottom: 10,
+                    left: 5,
+                    right: 5
+                }
             },
-            options: {
             scales: {
                 y: {
                     beginAtZero: true,
@@ -134,12 +289,18 @@
                     title: {
                         display: true,
                         text: 'Attendance (%)'
+                    },
+                    ticks: {
+                        font: { size: 12 }
                     }
                 },
                 x: {
                     title: {
                         display: true,
                         text: 'Week'
+                    },
+                    ticks: {
+                        font: { size: 12 }
                     }
                 }
             },
@@ -154,52 +315,20 @@
                 }
             }
         }
-        });
+    });
 
-        // Term comparison bar chart
-        const termCtx = document.getElementById('termChart').getContext('2d');
-        new Chart(termCtx, {
-            type: 'bar',
-            data: {
-                labels: {{ summary | map(attribute = 'term') | list | tojson }},
-            datasets: [{
-                label: 'Total Attendance (%)',
-                data: {{ summary | map(attribute = 'average') | list | tojson }},
-            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-            borderColor: '#2c3e50',
-            borderWidth: 1
-                }]
-            },
-            options: {
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 110,
-                    title: {
-                        display: true,
-                        text: 'Attendance (%)'
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false }
-            }
-        }
-        });
-
-        // CSV export
-        function downloadCSV() {
-            let csv = "Term,Total Attendance (%)\n";
-            {% for row in summary %}
-            csv += `"{{ row.term }}",{{ row.average }}\n`;
-            {% endfor %}
-            const blob = new Blob([csv], { type: "text/csv" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "attendance_summary.csv";
-            link.click();
-        }
-    </script>
+    // CSV export
+    function downloadCSV() {
+        let csv = "Term,Total Attendance (%)\n";
+        {% for row in summary %}
+        csv += `"{{ row.term }}",{{ row.average }}\n`;
+        {% endfor %}
+        const blob = new Blob([csv], { type: "text/csv" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "attendance_summary.csv";
+        link.click();
+    }
+</script>
 </body>
-
 </html>

@@ -1,26 +1,127 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Student Login</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <title>Whitecliffe Attendance Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <style>
+        body {
+            margin: 0;
+            background-color: #F3F5F7;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .login-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-box {
+            background-color: #FFFFFF;
+            padding: 40px 50px;
+            border-radius: 8px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h2 {
+            font-weight: 600;
+            color: #0053A0;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 15px;
+            color: #333;
+            margin-top: 10px;
+            display: block;
+            text-align: left;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            font-size: 16px;
+            background-color: #0053A0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #003f80;
+        }
+
+        .error {
+            color: #D8000C;
+            background-color: #FFD2D2;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .credit {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #777;
+        }
+
+        @media screen and (max-width: 480px) {
+            .login-box {
+                padding: 30px 20px;
+            }
+        }
+    </style>
 </head>
-
 <body>
-    <div class="container">
-        <h2>Student Attendance Portal</h2>
-        <form method="POST">
-            <input type="text" name="student_id" placeholder="Enter Student ID" required>
-            <button type="submit">Login</button>
-        </form>
+
+<div class="login-wrapper">
+    <div class="login-box">
+        <img src="/static/images/logo.png" alt="Whitecliffe Logo" style="max-width: 160px; margin-bottom: 25px;">
+        <h2>Whitecliffe International Student Attendance Portal</h2>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="error">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
         {% if error %}
-        <p class="error">{{ error }}</p>
+            <div class="error">{{ error }}</div>
         {% endif %}
-        <p style="text-align:center; font-size:13px; color:#777;">
-            Whitecliffe Attendance Portal – Developed by Pinal Shah
-        </p>
 
+        <form method="POST">
+            <label for="student_id">Student ID</label>
+            <input type="text" name="student_id" placeholder="e.g. 123456" required>
+            <button type="submit">Request OTP</button>
+        </form>
+
+        <div class="credit">
+           Developed by Pinal Shah
+        </div>
     </div>
-</body>
+</div>
 
+</body>
 </html>

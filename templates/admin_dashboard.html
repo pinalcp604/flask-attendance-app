@@ -1,155 +1,247 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Admin Dashboard</title>
+    <meta charset="UTF-8">
+    <title>Whitecliffe Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
+        body {
+            margin: 0;
+            background-color: #f3f5f7;
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            padding: 30px;
+        }
+
+        h2,
+        h3 {
+            color: #0053A0;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            background-color: #ffffff;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select,
+        button {
+            padding: 10px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin: 10px 5px 10px 0;
+        }
+
+        button {
+            background-color: #0053A0;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #003f80;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background-color: #fff;
         }
-        th, td {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
+
+        th,
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #eee;
             text-align: center;
+            font-size: 14px;
         }
-        input[type="text"], select, button {
-            padding: 8px;
-            margin: 10px 5px 10px 0;
+
+        th {
+            background-color: #eef4fc;
+            font-weight: 600;
         }
-        input[type="checkbox"] {
-            transform: scale(1.2);
+
+        tr.verylow td {
+            background-color: #ffe5e5;
         }
-        .verylow { background-color: #f8d7da; }
-        .low     { background-color: #fff3cd; }
-        .medium  { background-color: #d1ecf1; }
-        .high    { background-color: #d4edda; }
-        .summary { margin-top: 10px; font-weight: bold; }
-        footer { text-align: center; margin-top: 40px; font-size: 14px; color: #555; }
+
+        tr.low td {
+            background-color: #fff8cc;
+        }
+
+        tr.medium td {
+            background-color: #dff3ff;
+        }
+
+        tr.high td {
+            background-color: #e6ffea;
+        }
+
+        .summary {
+            margin-top: 15px;
+            font-weight: 500;
+        }
+
+        .filter-group {
+            margin: 15px 0;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        @media screen and (max-width: 768px) {
+
+            table,
+            th,
+            td {
+                font-size: 13px;
+            }
+
+            button {
+                width: 100%;
+                margin-top: 8px;
+            }
+        }
     </style>
 </head>
+
 <body>
 
-    <h2>Admin Dashboard</h2>
+    <div class="section">
+        <h2>Admin Dashboard</h2>
 
-    <!-- 🔍 Student Summary Search -->
-    <form method="POST">
-        <input type="text" name="student_id" placeholder="Enter Student ID" required>
-        <button type="submit">Get Summary</button>
-    </form>
-
-    
+        <!-- 🔍 Student Summary Search -->
+        <form method="POST">
+            <input type="text" name="student_id" placeholder="Enter Student ID" required>
+            <button type="submit">🔎 Get Summary</button>
+        </form>
+    </div>
 
     {% if student_summary %}
-    <h3>Term Summary for Student ID {{ student_id }}{% if student_name %} – {{ student_name }}{% endif %}</h3>
+    <div class="section">
+        <h3>Student Summary – ID {{ student_id }}{% if student_name %} ({{ student_name }}){% endif %}</h3>
 
-    <a href="{{ url_for('generate_warning_letter', email_type='warning1', student_id=student_id) }}">
-            <button>Generate Warning Letter 1</button>
+        <!-- 🚨 Warning Letter Buttons -->
+        <a href="{{ url_for('generate_warning_letter', email_type='warning1', student_id=student_id) }}">
+            <button>✉️ Warning Letter 1</button>
         </a>
-
         <a href="{{ url_for('generate_warning_letter', email_type='warning2', student_id=student_id) }}">
-            <button>Generate Warning Letter 2</button>
+            <button>✉️ Warning Letter 2</button>
         </a>
 
-    <!-- Warning Emails -->
-    
-    <!-- Word Export with Checkboxes -->
-    <form method="POST" action="{{ url_for('download_word_selected') }}">
-        <input type="hidden" name="student_id" value="{{ student_id }}">
+        <!-- 📄 Word Export Table -->
+        <form method="POST" action="{{ url_for('download_word_selected') }}">
+            <input type="hidden" name="student_id" value="{{ student_id }}">
+            <table id="studentSummaryTable">
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>Term</th>
+                        {% for week in student_summary[0].weeks.keys() %}
+                        <th>{{ week }}</th>
+                        {% endfor %}
+                        <th>Average (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in student_summary %}
+                    {% set category = 'high' %}
+                    {% if row.average < 50 %} {% set category='verylow' %} {% elif row.average < 70 %} {% set
+                        category='low' %} {% elif row.average < 90 %} {% set category='medium' %} {% endif %} <tr
+                        class="{{ category }}">
+                        <td><input type="checkbox" name="selected_terms" value="{{ row.term }}"></td>
+                        <td>{{ row.term }}</td>
+                        {% for value in row.weeks.values() %}
+                        <td>{{ value }}%</td>
+                        {% endfor %}
+                        <td><strong>{{ row.average }}%</strong></td>
+                        </tr>
+                        {% endfor %}
+                </tbody>
+            </table>
+            <br>
+            <button type="submit">📝 Generate Attendance Letter</button>
+            <button type="button" onclick="downloadStudentSummary()">📥 Download Summary (CSV)</button>
+        </form>
+    </div>
+    {% endif %}
 
-        <table id="studentSummaryTable">
+    <div class="section">
+        <!-- 📂 Term Selector -->
+        <form method="POST">
+            <label for="term"><strong>Select Term:</strong></label>
+            <select name="term" onchange="this.form.submit()">
+                {% for term in terms %}
+                <option value="{{ term }}" {% if term.replace('_', ' ' )==selected_term %}selected{% endif %}>
+                    {{ term.replace('_', ' ') }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <!-- 👥 Student Attendance Table -->
+        <h3>Student Attendance – {{ selected_term }}</h3>
+        <div class="filter-group">
+            <input type="text" id="searchInput" placeholder="🔍 Search by name or ID">
+            <select id="attendanceFilter">
+                <option value="all">All</option>
+                <option value="verylow">Below 50%</option>
+                <option value="low">50–70%</option>
+                <option value="medium">70–90%</option>
+                <option value="high">Above 90%</option>
+            </select>
+            <button onclick="downloadCSV()">📥 Download CSV</button>
+        </div>
+
+        <div class="summary" id="summaryCounts"></div>
+
+        <table id="studentsTable">
             <thead>
                 <tr>
-                    <th>Select</th>
-                    <th>Term</th>
-                    {% for week in student_summary[0].weeks.keys() %}
-                    <th>{{ week }}</th>
-                    {% endfor %}
-                    <th>Average (%)</th>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Attendance (%)</th>
                 </tr>
             </thead>
             <tbody>
-                {% for row in student_summary %}
-                {% set category = 'high' %}
-                {% if row.average < 50 %}
-                    {% set category = 'verylow' %}
-                {% elif row.average < 70 %}
-                    {% set category = 'low' %}
-                {% elif row.average < 90 %}
-                    {% set category = 'medium' %}
-                {% endif %}
-                <tr class="{{ category }}">
-                    <td><input type="checkbox" name="selected_terms" value="{{ row.term }}" unchecked></td>
-                    <td>{{ row.term }}</td>
-                    {% for value in row.weeks.values() %}
-                    <td>{{ value }}%</td>
-                    {% endfor %}
-                    <td><strong>{{ row.average }}%</strong></td>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student['Student ID'] }}</td>
+                    <td>{{ student['First Name'] }} {{ student['Surname'] }}</td>
+                    <td>{{ student['Capped Average (%)'] }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
 
-        <br>
-        <button type="submit">Generate Attendance Letter</button>
-        <button type="button" onclick="downloadStudentSummary()">📥 Download Summary (CSV)</button>
-        
-
-    </form>
-    {% endif %}
-
-    <!-- 📂 Term Selector -->
-    <form method="POST">
-        <label for="term">Select Term:</label>
-        <select name="term" onchange="this.form.submit()">
-            {% for term in terms %}
-            <option value="{{ term }}" {% if term.replace('_', ' ') == selected_term %}selected{% endif %}>
-                {{ term.replace('_', ' ') }}
-            </option>
-            {% endfor %}
-        </select>
-    </form>
-
-    <!-- 👥 Student Table -->
-    <h3>Student Attendance – {{ selected_term }}</h3>
-    <input type="text" id="searchInput" placeholder="Search by name or ID...">
-    <select id="attendanceFilter">
-        <option value="all">All</option>
-        <option value="verylow">Below 50%</option>
-        <option value="low">50–70%</option>
-        <option value="medium">70–90%</option>
-        <option value="high">Above 90%</option>
-    </select>
-    <button onclick="downloadCSV()">Download CSV</button>
-    <div class="summary" id="summaryCounts"></div>
-
-    <table id="studentsTable">
-        <thead>
-            <tr>
-                <th>Student ID</th>
-                <th>Name</th>
-                <th>Attendance (%)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for student in students %}
-            <tr>
-                <td>{{ student['Student ID'] }}</td>
-                <td>{{ student['First Name'] }} {{ student['Surname'] }}</td>
-                <td>{{ student['Capped Average (%)'] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <br>
-    <a href="{{ url_for('admin_logout') }}">Log out</a>
+    <a href="{{ url_for('admin_logout') }}" style="display:inline-block; margin-top: 20px;">🔒 Log out</a>
 
     <footer>
         Developed by <strong>Pinal Shah</strong>
     </footer>
 
+    <!-- ✨ Script unchanged — works as before -->
     <script>
         const searchInput = document.getElementById('searchInput');
         const attendanceFilter = document.getElementById('attendanceFilter');
@@ -167,60 +259,59 @@
                 const name = row.cells[1].textContent.toLowerCase();
                 const attendance = parseFloat(row.cells[2].textContent);
                 let category = attendance < 50 ? "verylow" :
-                               attendance < 70 ? "low" :
-                               attendance <= 90 ? "medium" : "high";
+                    attendance < 70 ? "low" :
+                        attendance <= 90 ? "medium" : "high";
 
                 row.className = category;
                 const match = (id.includes(query) || name.includes(query)) &&
-                              (filter === 'all' || filter === category);
+                    (filter === 'all' || filter === category);
                 row.style.display = match ? "" : "none";
                 if (match) counts[category]++;
             });
 
-            summary.innerHTML = `
-                Showing:
-                <span style="color:#721c24">Below 50%: ${counts.verylow}</span> |
-                <span style="color:#856404">50–70%: ${counts.low}</span> |
-                <span style="color:#0c5460">70–90%: ${counts.medium}</span> |
-                <span style="color:#155724">Above 90%: ${counts.high}</span>
-            `;
-        }
+                        summary.innerHTML = `
+            Showing: 
+            <span style="color:#721c24">Below 50%: ${counts.verylow}</span> |
+            <span style="color:#856404">50–70%: ${counts.low}</span> |
+            <span style="color:#0c5460">70–90%: ${counts.medium}</span> |
+            <span style="color:#155724">Above 90%: ${counts.high}</span>
+        `;
+                    }
 
-        function downloadCSV() {
-            let csv = "Student ID,Name,Attendance (%)\n";
-            Array.from(rows).forEach(row => {
-                if (row.style.display !== "none") {
-                    const cells = row.cells;
-                    csv += `"${cells[0].textContent}","${cells[1].textContent}","${cells[2].textContent}"\n`;
-                }
-            });
-            const blob = new Blob([csv], { type: "text/csv" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "filtered_attendance.csv";
-            link.click();
-        }
+                    function downloadCSV() {
+                        let csv = "Student ID,Name,Attendance (%)\n";
+                        Array.from(rows).forEach(row => {
+                            if (row.style.display !== "none") {
+                                const cells = row.cells;
+                                csv += `"${cells[0].textContent}","${cells[1].textContent}","${cells[2].textContent}"\n`;
+                            }
+                        });
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const link = document.createElement("a");
+                        link.href = URL.createObjectURL(blob);
+                        link.download = "filtered_attendance.csv";
+                        link.click();
+                    }
 
-        function downloadStudentSummary() {
-            const table = document.getElementById('studentSummaryTable');
-            if (!table) return;
-            let csv = Array.from(table.rows).map(row =>
-                Array.from(row.cells).map(cell =>
-                    `"${cell.textContent.trim()}"`).join(",")
-            ).join("\n");
+                    function downloadStudentSummary() {
+                        const table = document.getElementById('studentSummaryTable');
+                        if (!table) return;
+                        let csv = Array.from(table.rows).map(row =>
+                            Array.from(row.cells).map(cell =>
+                                `"${cell.textContent.trim()}"`).join(",")
+                        ).join("\n");
 
-            const blob = new Blob([csv], { type: "text/csv" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "student_summary.csv";
-            link.click();
-        }
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const link = document.createElement("a");
+                        link.href = URL.createObjectURL(blob);
+                        link.download = "student_summary.csv";
+                        link.click();
+                    }
 
-        searchInput.addEventListener("input", filterTable);
-        searchInput.addEventListener("input", filterTable);
-        attendanceFilter.addEventListener("change", filterTable);
-        window.onload = filterTable;
-    </script>
-
+                    searchInput.addEventListener("input", filterTable);
+                    attendanceFilter.addEventListener("change", filterTable);
+                    window.onload = filterTable;
+                </script>
 </body>
+
 </html>

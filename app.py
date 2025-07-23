@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
 import pandas as pd
 from docx import Document
 from docx.shared import Inches, Pt
@@ -10,12 +10,15 @@ import os
 from dotenv import load_dotenv
 from io import BytesIO
 import datetime
+import random
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 EXCEL_FILE = "Attendance Test.xlsx"
 
 load_dotenv()
+EMAIL = os.getenv("OUTLOOK_EMAIL")
+PASSWORD = os.getenv("OUTLOOK_PASSWORD")
 
 # === Sheet Filtering ===
 
@@ -39,59 +42,123 @@ def sanitize_ids(df):
         lambda x: int(float(x)) if pd.notnull(x) else None)
     return df
 
-# === LOGIN ===
+
+def send_otp_email(student_id, otp):
+    receiver_email = f"{student_id}@mywhitecliffe.com"
+   # receiver_email = f"pinals@whitecliffe.ac.nz"
+
+    msg = MIMEText(f"Your OTP to access your attendance dashboard is: {otp}")
+    msg['Subject'] = "Whitecliffe Attendance OTP"
+    msg['From'] = EMAIL
+    msg['To'] = receiver_email
+
+    with smtplib.SMTP("smtp.office365.com", 587) as server:
+        server.starttls()
+        server.login(EMAIL, PASSWORD)
+        server.send_message(msg)
 
 
-@app.route('/', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
+# new otp based code
+
+# === Step 1: Login Request (Send OTP) ===
+@app.route("/", methods=["GET", "POST"])
+def request_otp():
+    if request.method == "POST":
         try:
-            student_id = int(float(request.form['student_id']))
-            summary = []
-            selected_record = None
-            selected_term = None
-            week_cols = []
+            student_id = int(float(request.form["student_id"]))
+            session["pending_id"] = student_id
 
+            # Verify student exists in at least one term
+            found = False
             for sheet in sheet_names:
                 df = sanitize_ids(pd.read_excel(EXCEL_FILE, sheet_name=sheet))
-                weeks = [col for col in df.columns if col.startswith("Week")]
-                df[weeks] = df[weeks].clip(upper=1.0)
-                df["Capped Average (%)"] = df[weeks].mean(axis=1) * 100
-                df["Capped Average (%)"] = df["Capped Average (%)"].round(2)
+                if student_id in df["Student ID"].values:
+                    found = True
+                    break
 
-                student_data = df[df['Student ID'] == student_id]
-                if not student_data.empty:
-                    record = student_data.to_dict('records')[0]
-                    summary.append({"term": sheet.replace(
-                        "_", " "), "average": record["Capped Average (%)"]})
-                    if not selected_record:
-                        selected_record = record
-                        selected_term = sheet
-                        week_cols = weeks
+            if not found:
+                return render_template("login.html", error="❌ Student ID not found.")
 
-            if selected_record:
-                return render_template(
-                    'dashboard.html',
-                    student=selected_record,
-                    weeks=week_cols,
-                    term=selected_term.replace("_", " "),
-                    terms=sheet_names,
-                    selected_term=selected_term,
-                    summary=summary
-                )
-            return render_template('login.html', error="Student ID not found.")
+            # Send OTP
+            otp = str(random.randint(100000, 999999))
+            session["otp"] = otp
+            send_otp_email(student_id, otp)
+            flash("✅ OTP sent to your institutional email.")
+            return redirect(url_for("verify_otp"))
+
         except Exception as e:
-            return render_template('login.html', error=f"Error: {str(e)}")
+            return render_template("login.html", error=f"Error: {str(e)}")
 
-    return render_template('login.html')
+    return render_template("login.html")
 
-# === CHANGE TERM ===
+# === Step 2: OTP Verification ===
 
 
-@app.route('/term', methods=['POST'])
+@app.route("/verify_otp", methods=["GET", "POST"])
+def verify_otp():
+    if request.method == "POST":
+        entered_otp = request.form["otp"]
+        if entered_otp == session.get("otp"):
+            session["student_id"] = session.pop("pending_id")
+            session.pop("otp")
+            return redirect(url_for("student_dashboard"))
+        else:
+            flash("❌ Incorrect OTP. Try again.")
+            return redirect(url_for("verify_otp"))
+
+    return render_template("verify_otp.html")
+
+# === Step 3: Dashboard View ===
+
+
+@app.route("/student_dashboard")
+def student_dashboard():
+    if "student_id" not in session:
+        return redirect(url_for("request_otp"))
+
+    student_id = session["student_id"]
+    summary = []
+    selected_record = None
+    selected_term = None
+    week_cols = []
+
+    for sheet in sheet_names:
+        df = sanitize_ids(pd.read_excel(EXCEL_FILE, sheet_name=sheet))
+        weeks = [col for col in df.columns if col.startswith("Week")]
+        df[weeks] = df[weeks].clip(upper=1.0)
+        df["Capped Average (%)"] = df[weeks].mean(axis=1) * 100
+        df["Capped Average (%)"] = df["Capped Average (%)"].round(2)
+
+        student_data = df[df["Student ID"] == student_id]
+        if not student_data.empty:
+            record = student_data.to_dict("records")[0]
+            summary.append({"term": sheet.replace("_", " "),
+                           "average": record["Capped Average (%)"]})
+            if not selected_record:
+                selected_record = record
+                selected_term = sheet
+                week_cols = weeks
+
+    return render_template(
+        "dashboard.html",
+        student=selected_record,
+        weeks=week_cols,
+        term=selected_term.replace("_", " "),
+        terms=sheet_names,
+        selected_term=selected_term,
+        summary=summary
+    )
+
+# === Step 4: Change Term ===
+
+
+@app.route("/term", methods=["POST"])
 def change_term():
-    student_id = int(float(request.form['student_id']))
-    selected_term = request.form['term']
+    if "student_id" not in session:
+        return redirect(url_for("request_otp"))
+
+    student_id = session["student_id"]
+    selected_term = request.form["term"]
     summary = []
     selected_record = None
     week_cols = []
@@ -103,25 +170,33 @@ def change_term():
         df["Capped Average (%)"] = df[weeks].mean(axis=1) * 100
         df["Capped Average (%)"] = df["Capped Average (%)"].round(2)
 
-        student_data = df[df['Student ID'] == student_id]
+        student_data = df[df["Student ID"] == student_id]
         if not student_data.empty:
-            record = student_data.to_dict('records')[0]
+            record = student_data.to_dict("records")[0]
             summary.append({"term": sheet.replace("_", " "),
                            "average": record["Capped Average (%)"]})
             if sheet == selected_term:
                 selected_record = record
                 week_cols = weeks
 
-    if selected_record:
-        return render_template('dashboard.html',
-                               student=selected_record,
-                               weeks=week_cols,
-                               term=selected_term.replace("_", " "),
-                               terms=sheet_names,
-                               selected_term=selected_term,
-                               summary=summary
-                               )
-    return render_template('login.html', error="Student ID not found.")
+    return render_template(
+        "dashboard.html",
+        student=selected_record,
+        weeks=week_cols,
+        term=selected_term.replace("_", " "),
+        terms=sheet_names,
+        selected_term=selected_term,
+        summary=summary
+    )
+
+# === Logout ===
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for("request_otp"))
 
 
 # === ADMIN LOGIN ===
@@ -394,14 +469,14 @@ def generate_warning_letter(email_type, student_id):
 
     doc.add_paragraph(f"Date: {datetime.date.today().strftime('%d %B %Y')}")
    # doc.add_paragraph("")
-    #doc.add_paragraph(f"Student Name: {student_name}")
+    # doc.add_paragraph(f"Student Name: {student_name}")
 
     # Student Name
     p_name = doc.add_paragraph()
     p_name.add_run("Student Name: ").bold = True
     p_name.add_run(student_name)
 
-    #doc.add_paragraph(f"Student ID: {student_id}")
+    # doc.add_paragraph(f"Student ID: {student_id}")
 
     # Student ID
     p_id = doc.add_paragraph()
@@ -411,7 +486,8 @@ def generate_warning_letter(email_type, student_id):
     if email_type == "warning1":
         # === Additional Warning Content ===
         doc.add_paragraph("")
-        doc.add_paragraph("Re: Attendance [You are an international student currently enrolled in]", style='Normal').runs[0].bold = True
+        doc.add_paragraph(
+            "Re: Attendance [You are an international student currently enrolled in]", style='Normal').runs[0].bold = True
 
         doc.add_paragraph("")
 
@@ -475,9 +551,6 @@ def generate_warning_letter(email_type, student_id):
         doc.add_paragraph("Ngā mihi / Yours sincerely").runs[0].bold = True
 
         doc.add_paragraph("Head of School").runs[0].bold = True
-
-
-    
 
     buffer = BytesIO()
     doc.save(buffer)
