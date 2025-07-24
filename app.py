@@ -19,6 +19,8 @@ EXCEL_FILE = "Attendance Test.xlsx"
 load_dotenv()
 EMAIL = os.getenv("OUTLOOK_EMAIL")
 PASSWORD = os.getenv("OUTLOOK_PASSWORD")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
 
 # === Sheet Filtering ===
 
