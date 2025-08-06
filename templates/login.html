@@ -123,5 +123,25 @@
     </div>
 </div>
 
+<script>
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    });
+</script>
+
+<script>
+    document.addEventListener('keydown', function (e) {
+        if (
+            (e.ctrlKey && e.key === 'u') ||     // Ctrl+U
+            (e.key === 'F12') ||                // F12
+            (e.ctrlKey && e.shiftKey && e.key === 'I') // Ctrl+Shift+I
+        ) {
+            e.preventDefault();
+        }
+    });
+</script>
+
+
+
 </body>
 </html>
